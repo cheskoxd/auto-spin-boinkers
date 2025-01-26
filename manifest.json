@@ -1,27 +1,25 @@
 {
-    "manifest_version": 3,
-    "name": "Spin Wheel of Fortune",
-    "version": "1.0",
-    "description": "Automate spinning the wheel of fortune on boink.boinkers.co",
-    "permissions": [
-      "storage",
-      "scripting",
-      "activeTab"
-    ],
-    "host_permissions": [
-      "https://boink.boinkers.co/*"
-    ],
-    "action": {
-      "default_popup": "popup.html"
-    },
-    "icons": {
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    },
-    "content_scripts": [
-      {
-        "matches": ["https://boink.boinkers.co/*"],
-        "js": ["content.js"]
-      }
-    ]
+  "manifest_version": 3,
+  "name": "Auto Spin Boinkers Wheel",
+  "version": "1.0",
+  "description": "Automate spinning the wheel of fortune on boink.boinkers.co",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://boink.boinkers.co/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://boink.boinkers.co/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "icons": {
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   }
+}

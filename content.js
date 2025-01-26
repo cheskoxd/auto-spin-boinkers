@@ -187,8 +187,10 @@ let spinsDone = 0;
 let totalEnergyUsed = 0;
 let prizeValues = {};
 let remainingEnergy = 0;
+let totalEnergy = 0;
 let currentMultiplier = 1; // Track the current multiplier
 let intervalId = null;
+let isSpinning = false; // Flag to track if spinning is active
 
 // Function to start spinning
 function startSpinning(selectedNumber, spinCount) {
@@ -196,17 +198,19 @@ function startSpinning(selectedNumber, spinCount) {
   totalEnergyUsed = 0;
   prizeValues = {};
   currentMultiplier = 1; // Reset the multiplier
+  isSpinning = true; // Set spinning flag to true
 
   updateStatus({
     status: 'running',
     spinsDone,
     totalEnergyUsed,
     prizeValues,
-    currentMultiplier
+    currentMultiplier, 
+    totalEnergy
   });
 
   intervalId = setInterval(() => {
-    if (spinsDone >= spinCount) {
+    if (!isSpinning || spinsDone >= spinCount) {
       stopSpinning();
       return;
     }
@@ -241,6 +245,7 @@ function startSpinning(selectedNumber, spinCount) {
       return response.json();
     })
     .then(data => {
+
       spinsDone++;
 
       // Update total energy used
@@ -261,13 +266,15 @@ function startSpinning(selectedNumber, spinCount) {
 
       // Update the status with remaining energy and current multiplier
       remainingEnergy = data.userGameEnergy?.energy || 0;
+      totalEnergy = data.userGamesEnergy?.slotMachine?.energy || 0;
       updateStatus({
-        status: 'running',
+        status: isSpinning ? 'running' : 'finished',
         spinsDone,
         totalEnergyUsed,
         prizeValues,
         remainingEnergy,
-        currentMultiplier
+        currentMultiplier,
+        totalEnergy
       });
 
       // Stop spinning if the user runs out of energy
@@ -280,6 +287,7 @@ function startSpinning(selectedNumber, spinCount) {
       }
     })
     .catch(error => {
+      if (!isSpinning) return; // Ignore if spinning is stopped
       console.error('Error:', error);
       stopSpinning();
       updateStatus({
@@ -292,17 +300,19 @@ function startSpinning(selectedNumber, spinCount) {
 
 // Function to stop spinning
 function stopSpinning() {
+  isSpinning = false; // Set spinning flag to false
   clearInterval(intervalId);
   intervalId = null;
 
-  // Update the status
+  // Update the status to "finished"
   updateStatus({
     status: 'finished',
     spinsDone,
     totalEnergyUsed,
     prizeValues,
     remainingEnergy,
-    currentMultiplier
+    currentMultiplier,
+    totalEnergy
   });
 
   // Show the start button and hide the stop button
@@ -311,29 +321,31 @@ function stopSpinning() {
 }
 
 // Function to update the status in the sidebar
-function updateStatus({ status, spinsDone, totalEnergyUsed, prizeValues, remainingEnergy, currentMultiplier, message }) {
+function updateStatus({ status, spinsDone, totalEnergyUsed, prizeValues, remainingEnergy, currentMultiplier, message, totalEnergy }) {
   const statusElement = document.getElementById('status');
   if (status === 'finished') {
     let resultText = `<div style="background-color: #e8f5e9; padding: 10px; border-radius: 5px; color: #2e7d32;">✅ Finished spinning!</div>`;
     resultText += `<div style="margin-top: 10px;"><strong>Total spins used:</strong> ${totalEnergyUsed}</div>`;
     resultText += `<div style="margin-top: 10px;"><strong>Current Multiplier:</strong> x${currentMultiplier}</div>`;
-    resultText += `<div style="margin-top: 10px;"><strong>Total prize values:</strong></div>`;
+    resultText += `<div style="margin-top: 10px;"><strong>Total prizes won:</strong></div>`;
     for (const [prizeName, prizeValue] of Object.entries(prizeValues)) {
       if (prizeName === "slotMachine") {
         resultText += `<div><img style="width: 20px; height: 20px;" src="https://boink.boinkers.co/assets/img/daily-wheel/energy-drink.png" alt="" /> Energy: ${prizeValue}</div>`;
       } else {
-        resultText += `<div>🎁 ${prizeName}: ${prizeValue}</div>`;
+        resultText += `<div>🎁 Other prizes: ${prizeValue}</div>`;
       }
     }
+    resultText += `<div style="margin-top: 10px;"><strong>Energy balance:</strong> ${totalEnergy}</div>`;
     statusElement.innerHTML = resultText;
   } else if (status === 'running') {
     let resultText = `<div style="background-color: #fff3e0; padding: 10px; border-radius: 5px; color: #e65100;">🔄 Completed Spins: ${spinsDone}</div>`;
     resultText += `<div style="margin-top: 10px;"><strong>Total spins spent:</strong> ${totalEnergyUsed}</div>`;
     resultText += `<div style="margin-top: 10px;"><strong>Current Multiplier:</strong> x${currentMultiplier}</div>`;
-    resultText += `<div style="margin-top: 10px;"><strong>Total prize values:</strong></div>`;
+    resultText += `<div style="margin-top: 10px;"><strong>Total prizes won:</strong></div>`;
     for (const [prizeName, prizeValue] of Object.entries(prizeValues)) {
-      resultText += `<div>${prizeName === "slotMachine" ? `<img style="width: 20px; height: 20px;" src="https://boink.boinkers.co/assets/img/daily-wheel/energy-drink.png" alt="" />` : "🎁"} ${prizeName === "slotMachine" ? "Energy" : "Other prize"}: ${prizeValue}</div>`;
+      resultText += `<div>${prizeName === "slotMachine" ? `<img style="width: 20px; height: 20px;" src="https://boink.boinkers.co/assets/img/daily-wheel/energy-drink.png" alt="" />` : "🎁"} ${prizeName === "slotMachine" ? "Energy" : "Other prizes"}: ${prizeValue}</div>`;
     }
+    resultText += `<div style="margin-top: 10px;"><strong>Energy balance is:</strong> ${totalEnergy}</div>`;
     statusElement.innerHTML = resultText;
   } else if (status === 'error') {
     statusElement.innerHTML = `<div style="background-color: #ffebee; padding: 10px; border-radius: 5px; color: #c62828;">❌ Error: ${message}</div>`;

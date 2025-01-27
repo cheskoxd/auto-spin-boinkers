@@ -225,7 +225,7 @@ function startSpinning(selectedNumber, spinCount) {
       return;
     }
 
-    fetch(`https://boink.boinkers.co/api/play/spinWheelOfFortune/${selectedNumber}?p=unknown&v=-1326987291`, {
+    fetch(`https://boink.boinkers.co/api/play/spinWheelOfFortune/${selectedNumber}?p=unknown&v=`, {
       method: 'POST',
       headers: {
         'accept': 'application/json, text/plain, */*',

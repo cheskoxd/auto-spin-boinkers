@@ -192,8 +192,32 @@ let currentMultiplier = 1; // Track the current multiplier
 let intervalId = null;
 let isSpinning = false; // Flag to track if spinning is active
 
+
+async function fetchConfigValue(url, key) {
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (key in data) {
+      return data[key];
+    } else {
+      throw new Error(`Key "${key}" not found in the config file.`);
+    }
+  } catch (error) {
+    console.error('Error fetching config value:', error.message);
+    return null; // Return null or handle error as needed
+  }
+}
+
+
 // Function to start spinning
-function startSpinning(selectedNumber, spinCount) {
+async function startSpinning(selectedNumber, spinCount) {
+  const VERSION = await fetchConfigValue('https://cheskoxd.github.io/auto-spin-boinkers/data.json', 'version');
   spinsDone = 0;
   totalEnergyUsed = 0;
   prizeValues = {};
@@ -208,6 +232,7 @@ function startSpinning(selectedNumber, spinCount) {
     currentMultiplier, 
     totalEnergy
   });
+
 
   intervalId = setInterval(() => {
     if (!isSpinning || spinsDone >= spinCount) {
@@ -224,8 +249,9 @@ function startSpinning(selectedNumber, spinCount) {
       });
       return;
     }
+    
 
-    fetch(`https://boink.boinkers.co/api/play/spinWheelOfFortune/${selectedNumber}?p=unknown&v=`, {
+    fetch(`https://boink.boinkers.co/api/play/spinWheelOfFortune/${selectedNumber}?p=unknown&v=${VERSION}`, {
       method: 'POST',
       headers: {
         'accept': 'application/json, text/plain, */*',

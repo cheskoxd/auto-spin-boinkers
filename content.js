@@ -1,5 +1,5 @@
 // Inject the toggle button and sidebar into the webpage
-function injectSidebar() {
+async function injectSidebar() {
   // Create the toggle button
   const toggleButton = document.createElement('button');
   toggleButton.id = 'extension-toggle-button';
@@ -180,6 +180,8 @@ donateNotcoin.addEventListener('click', () => {
   stopButton.addEventListener('click', () => {
     stopSpinning();
   });
+
+  config = await fetchConfigData();
 }
 
 // Global variables to track spinning state
@@ -191,33 +193,68 @@ let totalEnergy = 0;
 let currentMultiplier = 1; // Track the current multiplier
 let intervalId = null;
 let isSpinning = false; // Flag to track if spinning is active
-
-
-async function fetchConfigValue(url, key) {
+let config = {}
+async function fetchConfigData() {
   try {
-    const response = await fetch(url);
+    // Perform the fetch request
+    const response = await fetch("https://boink.boinkers.co/public/data/config?p=unknown", {
+      headers: {
+        "accept": "application/json, text/plain, */*",
+        "accept-language": "es-ES,es;q=0.5",
+        "if-none-match": "W/\"23e8f-LhuqOBVhikD3m9pkr0wV7ekAxLg\"",
+        "priority": "u=1, i",
+        "sec-ch-ua": "\"Not A(Brand\";v=\"8\", \"Chromium\";v=\"132\", \"Brave\";v=\"132\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\"",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin",
+        "sec-gpc": "1"
+      },
+      referrer: "https://boink.boinkers.co/daily-wheel",
+      referrerPolicy: "strict-origin-when-cross-origin",
+      body: null,
+      method: "GET",
+      mode: "cors",
+      credentials: "include"
+    });
 
+    // Check if the response is successful
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
+    // Parse the JSON response
     const data = await response.json();
 
-    if (key in data) {
-      return data[key];
-    } else {
-      throw new Error(`Key "${key}" not found in the config file.`);
-    }
+    // Extract the version hash
+    const versionHash = data?.versionHash || null;
+
+    // Find the liveOp for the wheel
+    const liveOps = data?.liveOps || [];
+    const wheelLiveOp = liveOps.find(op => op.liveOpName && op.liveOpName.includes("Wheel"));
+
+    // Extract the liveOp's ID and name
+    const wheelLiveOpId = wheelLiveOp?._id || null;
+    const wheelLiveOpName = wheelLiveOp?.liveOpName || null;
+
+    // Log the results or handle them as needed
+    console.log("VersionHash:", versionHash);
+    console.log("Wheel LiveOp ID:", wheelLiveOpId);
+    console.log("Wheel LiveOp Name:", wheelLiveOpName);
+
+    return { versionHash, wheelLiveOpId, wheelLiveOpName };
   } catch (error) {
-    console.error('Error fetching config value:', error.message);
-    return null; // Return null or handle error as needed
+    console.error("Error fetching config data:", error.message);
+    return null;
   }
 }
 
 
+
 // Function to start spinning
-async function startSpinning(selectedNumber, spinCount) {
-  const VERSION = await fetchConfigValue('https://cheskoxd.github.io/auto-spin-boinkers/data.json', 'version');
+function startSpinning(selectedNumber, spinCount) {
+  // const VERSION = await fetchConfigValue('https://cheskoxd.github.io/auto-spin-boinkers/data.json', 'version');
   spinsDone = 0;
   totalEnergyUsed = 0;
   prizeValues = {};
@@ -251,7 +288,7 @@ async function startSpinning(selectedNumber, spinCount) {
     }
     
 
-    fetch(`https://boink.boinkers.co/api/play/spinWheelOfFortune/${selectedNumber}?p=unknown&v=${VERSION}`, {
+    fetch(`https://boink.boinkers.co/api/play/spinWheelOfFortune/${selectedNumber}?p=unknown&v=${config.versionHash}`, {
       method: 'POST',
       headers: {
         'accept': 'application/json, text/plain, */*',
@@ -260,7 +297,7 @@ async function startSpinning(selectedNumber, spinCount) {
       },
       referrer: 'https://boink.boinkers.co/daily-wheel',
       referrerPolicy: 'strict-origin-when-cross-origin',
-      body: '{}',
+      body: `{"liveOpId": "${config.wheelLiveOpId}"}`,
       mode: 'cors',
       credentials: 'include'
     })

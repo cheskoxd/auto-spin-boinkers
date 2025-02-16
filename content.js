@@ -197,7 +197,7 @@ let config = {}
 async function fetchConfigData() {
   try {
     // Perform the fetch request
-    const response = await fetch("https://boink.boinkers.co/public/data/config?p=unknown", {
+    const response = await fetch("https://boinkers.io/public/data/config?p=unknown", {
       headers: {
         "accept": "application/json, text/plain, */*",
         "accept-language": "es-ES,es;q=0.5",
@@ -211,7 +211,7 @@ async function fetchConfigData() {
         "sec-fetch-site": "same-origin",
         "sec-gpc": "1"
       },
-      referrer: "https://boink.boinkers.co/daily-wheel",
+      referrer: "https://boinkers.io/daily-wheel",
       referrerPolicy: "strict-origin-when-cross-origin",
       body: null,
       method: "GET",
@@ -232,7 +232,7 @@ async function fetchConfigData() {
 
     // Find the liveOp for the wheel
     const liveOps = data?.liveOps || [];
-    const wheelLiveOp = liveOps.find(op => op.liveOpName && op.liveOpName.includes("Wheel"));
+    const wheelLiveOp = liveOps.find(op => op.liveOpName && op.liveOpName.toLowerCase().includes("wheel"));
 
     // Extract the liveOp's ID and name
     const wheelLiveOpId = wheelLiveOp?._id || null;
@@ -288,14 +288,14 @@ function startSpinning(selectedNumber, spinCount) {
     }
     
 
-    fetch(`https://boink.boinkers.co/api/play/spinWheelOfFortune/${selectedNumber}?p=unknown&v=${config.versionHash}`, {
+    fetch(`https://boinkers.io/api/play/spinWheelOfFortune/${selectedNumber}?p=unknown&v=${config.versionHash}`, {
       method: 'POST',
       headers: {
         'accept': 'application/json, text/plain, */*',
         'authorization': token,
         'content-type': 'application/json',
       },
-      referrer: 'https://boink.boinkers.co/daily-wheel',
+      referrer: 'https://boinkers.io/daily-wheel',
       referrerPolicy: 'strict-origin-when-cross-origin',
       body: `{"liveOpId": "${config.wheelLiveOpId}"}`,
       mode: 'cors',
@@ -393,7 +393,7 @@ function updateStatus({ status, spinsDone, totalEnergyUsed, prizeValues, remaini
     resultText += `<div style="margin-top: 10px;"><strong>Total prizes won:</strong></div>`;
     for (const [prizeName, prizeValue] of Object.entries(prizeValues)) {
       if (prizeName === "slotMachine") {
-        resultText += `<div><img style="width: 20px; height: 20px;" src="https://boink.boinkers.co/assets/img/daily-wheel/energy-drink.png" alt="" /> Energy: ${prizeValue}</div>`;
+        resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" /> Energy: ${prizeValue}</div>`;
       } else {
         resultText += `<div>🎁 Other prizes: ${prizeValue}</div>`;
       }
@@ -406,7 +406,7 @@ function updateStatus({ status, spinsDone, totalEnergyUsed, prizeValues, remaini
     resultText += `<div style="margin-top: 10px;"><strong>Current Multiplier:</strong> x${currentMultiplier}</div>`;
     resultText += `<div style="margin-top: 10px;"><strong>Total prizes won:</strong></div>`;
     for (const [prizeName, prizeValue] of Object.entries(prizeValues)) {
-      resultText += `<div>${prizeName === "slotMachine" ? `<img style="width: 20px; height: 20px;" src="https://boink.boinkers.co/assets/img/daily-wheel/energy-drink.png" alt="" />` : "🎁"} ${prizeName === "slotMachine" ? "Energy" : "Other prizes"}: ${prizeValue}</div>`;
+      resultText += `<div>${prizeName === "slotMachine" ? `<img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" />` : "🎁"} ${prizeName === "slotMachine" ? "Energy" : "Other prizes"}: ${prizeValue}</div>`;
     }
     resultText += `<div style="margin-top: 10px;"><strong>Energy balance is:</strong> ${totalEnergy}</div>`;
     statusElement.innerHTML = resultText;

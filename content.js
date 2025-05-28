@@ -352,13 +352,13 @@ function startSpinning(selectedNumber, spinCount) {
     .catch(error => {
       if (!isSpinning) return; // Ignore if spinning is stopped
       console.error('Error:', error);
-      stopSpinning();
+      // stopSpinning();
       updateStatus({
         status: 'error',
         message: error.message
       });
     });
-  }, 2000); // 2 seconds interval
+  }, 3000); // 2 seconds interval
 }
 
 // Function to stop spinning

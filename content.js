@@ -232,7 +232,14 @@ async function fetchConfigData() {
 
     // Find the liveOp for the wheel
     const liveOps = data?.liveOps || [];
-    const wheelLiveOp = liveOps.find(op => op.liveOpName && op.liveOpName.toLowerCase().includes("wheel"));
+    const wheelLiveOp = liveOps.reduce((latest, op) => {
+  if (op.liveOpName && op.liveOpName.toLowerCase().includes("wheel")) {
+    if (!latest || new Date(op.startDate) > new Date(latest.startDate)) {
+      return op;
+    }
+  }
+  return latest;
+}, null);
 
     // Extract the liveOp's ID and name
     const wheelLiveOpId = wheelLiveOp?._id || null;

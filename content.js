@@ -358,7 +358,7 @@ function startSpinning(selectedNumber, spinCount) {
         message: error.message
       });
     });
-  }, 3000); // 2 seconds interval
+  }, 2500); // 2.5 seconds interval
 }
 
 // Function to stop spinning

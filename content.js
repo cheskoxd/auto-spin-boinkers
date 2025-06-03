@@ -341,6 +341,92 @@ let intervalId = null;
 let isSpinning = false;
 let config = {};
 let lastSlutz = ['-', '-', '-'];
+let boinkersSentToMoon = 0;
+
+function formatNumber(num) {
+    // Return "0" for NaN, undefined, or non-numeric inputs
+    if (num == null || isNaN(num) || typeof num !== 'number') return "0";
+    
+    const suffixes = ['', 'k', 'M', 'B', 'T', 'Q']; // Includes quadrillion
+    let tier = Math.floor(Math.log10(Math.abs(num)) / 3); // Determine the tier
+    if (tier === 0 || num === 0) return num.toString(); // Numbers < 1000 or 0 stay as is
+    
+    const scale = Math.pow(10, tier * 3);
+    const scaled = num / scale;
+    const formatted = scaled.toFixed(1).replace(/\.0$/, ''); // Remove .0 if present
+    return formatted + suffixes[tier];
+}
+
+async function sendBoinkersToMoon(token) {
+  try {
+    const response = await fetch("https://boinkers.io/api/boinkers/megaUpgradeBoinkers?p=unknown&v=390356846", {
+  "headers": {
+    "accept": "application/json, text/plain, */*",
+    "content-type": "application/json",
+    'authorization': token,
+    "priority": "u=1, i",
+    "sec-ch-ua": "\"Brave\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
+    "sec-gpc": "1"
+  },
+  "referrer": "https://boinkers.io/",
+  "referrerPolicy": "strict-origin-when-cross-origin",
+  "body": "{}",
+  "method": "POST",
+  "mode": "cors",
+  "credentials": "include"
+});
+    
+
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+    console.log("Boinkers sent to the moon:", data);
+    return {boinkersOnTheMoon: data.userBoinkers.completedBoinkers};
+  } catch (error) {
+    console.error("Error sending Boinkers to the moon:", error.message);
+    return {boinkersOnTheMoon: 0};
+
+  }
+}
+
+async function fetchSelfData(token) {
+  try {
+    const response = await fetch("https://boinkers.io/api/users/me?p=unknown", {
+  "headers": {
+    "accept": "application/json, text/plain, */*",
+    "priority": "u=1, i",
+    "sec-ch-ua": "\"Brave\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+        'authorization': token,
+
+    "sec-fetch-dest": "empty",
+    "sec-fetch-mode": "cors",
+    "sec-fetch-site": "same-origin",
+    "sec-gpc": "1"
+  },
+  "referrer": "https://boinkers.io/sluts",
+  "referrerPolicy": "strict-origin-when-cross-origin",
+  "body": null,
+  "method": "GET",
+  "mode": "cors",
+  "credentials": "include"
+});
+
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+    console.log("SELF DATA")
+    console.log(data)
+    return {boinkersOnTheMoon: data.boinkers.completedBoinkers};
+  } catch (error) {
+    console.error("Error fetching self data:", error.message);
+    return {boinkresOnTheMoon: 0};
+  }
+}
 
 async function fetchConfigData() {
   try {
@@ -348,7 +434,7 @@ async function fetchConfigData() {
       headers: {
         "accept": "application/json, text/plain, */*",
         "accept-language": "es-ES,es;q=0.5",
-        "if-none-match": "W/\"23e8f-LhuqOBVhikD3m9pkr0wV7ekAxLg\"",
+        
         "priority": "u=1, i",
         "sec-ch-ua": "\"Not A(Brand\";v=\"8\", \"Chromium\";v=\"132\", \"Brave\";v=\"132\"",
         "sec-ch-ua-mobile": "?0",
@@ -387,12 +473,13 @@ async function fetchConfigData() {
   }
 }
 
-function startSpinning(betAmount, spinCount, type) {
+async function startSpinning(betAmount, spinCount, type) {
   spinsDone = 0;
   totalEnergyUsed = 0;
   prizeValues = {};
   currentMultiplier = type === 'wheel' ? 1 : 0;
   isSpinning = true;
+  startBoinkers = type === 'slot' && localStorage.getItem('token') ? await fetchSelfData(localStorage.getItem('token')) : {boinkersOnTheMoon: 0};
 
   updateStatus({
     status: 'running',
@@ -406,8 +493,9 @@ function startSpinning(betAmount, spinCount, type) {
 
   const endpoint = type === 'wheel' ? `spinWheelOfFortune/${betAmount}` : `spinSlotMachine/${betAmount}`;
   const referrer = type === 'wheel' ? 'https://boinkers.io/daily-wheel' : 'https://boinkers.io/sluts';
-  const interval = type === 'wheel' ? 2500 : 1500;
+  const interval = type === 'wheel' ? 2500 : 2000;
   const body = type === 'wheel' ? `{"liveOpId": "${config.wheelLiveOpId}"}` : null;
+
 
   intervalId = setInterval(() => {
     if (!isSpinning || spinsDone >= spinCount) {
@@ -439,10 +527,10 @@ function startSpinning(betAmount, spinCount, type) {
       if (!response.ok) throw new Error('Network response was not ok');
       return response.json();
     })
-    .then(data => {
+    .then(async (data) => {
       spinsDone++;
       totalEnergyUsed += data.energyUsed || betAmount;
-      const prizeName = data.prize?.prizeTypeName || 'No Prize';
+      const prizeName = data.prize?.prizeType
       const prizeValue = data.prize?.prizeValue || 0;
       if (prizeName) {
         if (!prizeValues[prizeName]) prizeValues[prizeName] = 0;
@@ -452,6 +540,13 @@ function startSpinning(betAmount, spinCount, type) {
       remainingEnergy = data.userGameEnergy?.energy || 0;
       totalEnergy = data.userGamesEnergy?.slotMachine?.energy || 0;
       if (type === 'slot') lastSlutz = data.slutz || ['-', '-', '-'];
+      if(type == 'slot') {
+        if (spinsDone % 20 === 0) {
+        const {boinkersOnTheMoon } = await sendBoinkersToMoon(token)
+          let newBoinkersTotal = boinkersOnTheMoon - startBoinkers.boinkersOnTheMoon
+          boinkersSentToMoon += newBoinkersTotal
+      }
+      }
       updateStatus({
         status: isSpinning ? 'running' : 'finished',
         spinsDone,
@@ -514,10 +609,16 @@ function slutsIcon(icon){
       return `<img style="width: 40px; height: 40px;" src="https://boinkers.io/assets/img/slut/prizes/ass.png" alt="" />`
     case "bull":
       return `<img style="width: 40px; height: 40px;" src="https://boinkers.io/assets/img/slut/prizes/bull_v2.png" alt="" />`
+    case "coolBull":
+      return `<img style="width: 40px; height: 40px;" src="https://boinkers.io/assets/img/slut/prizes/coolBull_v2.png" alt="" />`
+    case "goldBull":
+      return `<img style="width: 40px; height: 40px;" src="https://boinkers.io/assets/img/slut/prizes/goldBull_v2.png" alt="" />`
     case "treasure-chest":
       return `<img style="width: 40px; height: 40px;" src="https://boinkers.io/assets/img/slut/prizes/treasure-chest.png" alt="" />`
     case "rugBear":
       return `<img style="width: 40px; height: 40px;" src="https://boinkers.io/assets/img/slut/prizes/rugBear_v2.png" alt="" />`
+    case "fatRugBear":
+      return `<img style="width: 40px; height: 40px;" src="https://boinkers.io/assets/img/slut/prizes/fatRugBear_v2.png" alt="" />`
     case "bear":
       return `<img style="width: 40px; height: 40px;" src="https://boinkers.io/assets/img/slut/prizes/bear_v2.png" alt="" />`
     case "energy":
@@ -529,6 +630,9 @@ function slutsIcon(icon){
       return icon
   }
 }
+
+
+
 
 function updateStatus({ status, spinsDone, totalEnergyUsed, prizeValues, remainingEnergy, currentMultiplier, message, totalEnergy, slutz }, type) {
   const statusElement = document.getElementById(type === 'wheel' ? 'wheelStatus' : 'slotStatus');
@@ -545,32 +649,90 @@ function updateStatus({ status, spinsDone, totalEnergyUsed, prizeValues, remaini
 
   if (status === 'finished') {
     let resultText = `<div style="background-color: #e8f5e9; padding: 10px; border-radius: 5px; color: #2e7d32;">✅ Finished spinning!</div>`;
-    resultText += `<div style="margin-top: 10px;"><strong>Total spins used:</strong> ${spinsDone}</div>`;
-    resultText += `<div style="margin-top: 10px;"><strong>Total energy spent:</strong> ${totalEnergyUsed}</div>`;
+    if( type === 'wheel') resultText += `<div style="margin-top: 10px;"><strong>Total spins used:</strong> ${formatNumber(spinsDone)}</div>`;
+    resultText += `<div style="margin-top: 10px;"><strong>Total energy spent:</strong> ${formatNumber(totalEnergyUsed)}</div>`;
     if (currentMultiplier && type === 'wheel') {
       resultText += `<div style="margin-top: 10px;"><strong>Current Multiplier:</strong> x${currentMultiplier}</div>`;
     }
     resultText += `<div style="margin-top: 10px;"><strong>Total prizes won:</strong></div>`;
     for (const [prizeName, prizeValue] of Object.entries(prizeValues)) {
+      let prizeVal = formatNumber(prizeValue)
       if (prizeName === "slotMachine") {
-        resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" /> Energy: ${prizeValue}</div>`;
+        resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" /> Energy: ${prizeVal}</div>`;
       } else {
-        resultText += `<div>🎁 ${prizeName}: ${prizeValue}</div>`;
+       
+          switch (Number(prizeName)) {
+            case 8:
+              resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/slut/prizes/coin.png" alt="" /> Gold: ${prizeVal}</div>`;
+              break;
+            case 21:
+              resultText += `<div>*   Symbol: ${prizeVal}</div>`;
+              break;
+            case 18:
+              resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/poog_v5.png" alt="" /> Shit Coins: ${prizeVal}</div>`;
+              break;
+            case 20:
+              resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" /> Energy: ${prizeVal}</div>`;
+              break;
+
+            
+          
+            default:
+              resultText += `<div>🎁 ${prizeName}: ${prizeVal}</div>`;
+
+              break;
+          }
+
+        
       }
     }
-    resultText += `<div style="margin-top: 10px;"><strong>Energy balance:</strong> ${totalEnergy}</div>`;
+    resultText += `<div style="margin-top: 10px;"><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" /><strong>Energy balance:</strong> ${formatNumber(totalEnergy)}</div>`;
+    if( type === 'slot') {
+      resultText += `<div style="margin-top: 10px;">🌕<strong>Boinkers sent to Moon:</strong> ${formatNumber(boinkersSentToMoon)}</div>`;
+    }
     statusElement.innerHTML = resultText;
   } else if (status === 'running') {
-    let resultText = `<div style="background-color: #fff3e0; padding: 10px; border-radius: 5px; color: #e65100;">🔄 Completed Spins: ${spinsDone}</div>`;
-    resultText += `<div style="margin-top: 10px;"><strong>Total energy spent:</strong> ${totalEnergyUsed}</div>`;
+    let resultText = `<div style="background-color: #fff3e0; padding: 10px; border-radius: 5px; color: #e65100;">🔄 Completed Spins: ${formatNumber(spinsDone)}</div>`;
+    resultText += `<div style="margin-top: 10px;"><strong>Total energy spent:</strong> ${formatNumber(totalEnergyUsed)}</div>`;
     if (currentMultiplier && type === 'wheel') {
       resultText += `<div style="margin-top: 10px;"><strong>Current Multiplier:</strong> x${currentMultiplier}</div>`;
     }
     resultText += `<div style="margin-top: 10px;"><strong>Total prizes won:</strong></div>`;
     for (const [prizeName, prizeValue] of Object.entries(prizeValues)) {
-      resultText += `<div>${prizeName === "slotMachine" ? `<img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" />` : "🎁"} ${prizeName === "slotMachine" ? "Energy" : prizeName}: ${prizeValue}</div>`;
+      let prizeVal = formatNumber(prizeValue)
+
+      if (prizeName === "slotMachine") {
+        resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" /> Energy: ${prizeVal}</div>`;
+      } else {
+       
+          switch (Number(prizeName)) {
+            case 8:
+              resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/slut/prizes/coin.png" alt="" /> Gold: ${prizeVal}</div>`;
+              break;
+            case 21:
+              resultText += `<div>*   Symbol: ${prizeVal}</div>`;
+              break;
+            case 18:
+              resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/poog_v5.png" alt="" /> Shit Coins: ${prizeVal}</div>`;
+              break;
+            case 20:
+              resultText += `<div><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" /> Energy: ${prizeVal}</div>`;
+              break;
+            
+          
+            default:
+              resultText += `<div>🎁 ${prizeName}: ${prizeVal}</div>`;
+
+              break;
+          }
+
+        
+      }
     }
-    resultText += `<div style="margin-top: 10px;"><strong>Energy balance:</strong> ${totalEnergy}</div>`;
+    resultText += `<div style="margin-top: 10px;"><img style="width: 20px; height: 20px;" src="https://boinkers.io/assets/img/daily-wheel/energy-drink.png" alt="" /><strong>Energy balance:</strong> ${formatNumber(totalEnergy)}</div>`;
+    if( type === 'slot') {
+      resultText += `<div style="margin-top: 10px;">🌕<strong>Boinkers sent to Moon:</strong> ${formatNumber(boinkersSentToMoon)}</div>`;
+    }
     statusElement.innerHTML = resultText;
   } else if (status === 'error') {
     statusElement.innerHTML = `<div style="background-color: #ffebee; padding: 10px; border-radius: 5px; color: #c62828;">❌ Error: ${message}</div>`;

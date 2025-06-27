@@ -586,7 +586,7 @@ async function startSpinning(betAmount, spinCount, type) {
         slutz: lastSlutz
       }, type);
 
-      if (remainingEnergy < betAmount) {
+      if (remainingEnergy < betAmount && spinsDone < spinCount) {
         stopSpinning(type);
         updateStatus({
           status: 'error',

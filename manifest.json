@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Auto Spin Boinkers Wheel",
-  "version": "1.6",
-  "description": "Automate spinning the wheel of fortune on boink.boinkers.co",
+  "version": "2",
+  "description": "Automate spinning the wheel of fortune and slut machine on boink.boinkers.co",
   "content_scripts": [
     {
       "matches": ["https://boinkers.io/*"],

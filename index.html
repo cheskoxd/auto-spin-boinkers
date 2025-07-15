@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Limbo Auto Spinner & Simulator</title>
+  <style>
+    /* Reset & base */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #eef2f7; color: #1f2937; padding: 2rem; display: flex; flex-direction: column; align-items: center; }
+    h1 { font-size: 2rem; margin-bottom: 1.5rem; text-align: center; }
+
+    /* Tabs */
+    .tabs { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+    .tabs button { background: #ffffff; border: 1px solid #cbd5e1; padding: 0.6rem 1.2rem; margin: 0 0.2rem; border-radius: 0.5rem; cursor: pointer; transition: background 0.2s; font-size: 1rem; }
+    .tabs button.active { background: #2563eb; color: #ffffff; border-color: #2563eb; }
+    .tabs button:hover { background: #e2e8f0; }
+
+    /* Panels */
+    .panel { display: none; max-width: 800px; }
+    .panel.active { display: block; }
+
+    /* Input grid */
+    .inputs { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .inputs label { font-size: 0.9rem; color: #374151; }
+    .inputs input { width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; }
+    .inputs button { grid-column: span 2; background: #2563eb; color: #ffffff; border: none; padding: 0.7rem; border-radius: 0.4rem; font-size: 1rem; }
+    .inputs button:hover { background: #1e40af; }
+
+    /* Status & Results cards */
+    .card { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 1rem; margin-top: 1.5rem; }
+    .status { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .status div, .results div { font-size: 0.95rem; margin-bottom: 0.5rem; }
+    .status .spin-log { grid-column: span 2; max-height: 200px; overflow-y: auto; font-family: monospace; background: #f8fafc; padding: 0.5rem; border-radius: 0.4rem; }
+
+    .results { font-size: 0.95rem; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <h1>Limbo Auto Spinner & Simulator</h1>
+  <div class="tabs">
+    <button id="tabLive" class="active">Live Spinner</button>
+    <button id="tabSim">Simulation</button>
+  </div>
+
+  <!-- Live Spinner Panel -->
+  <div id="livePanel" class="panel active">
+    <div class="inputs">
+      <div><label for="balance">Initial Balance ($)</label><input type="number" id="balance" value="10" step="0.01"></div>
+      <div><label for="initialBet">Initial Bet ($)</label><input type="number" id="initialBet" value="0.10" step="0.01"></div>
+      <div><label for="multiplier">Target Multiplier</label><input type="number" id="multiplier" value="10" step="0.1"></div>
+      <div><label for="houseEdge">House Edge (%)</label><input type="number" id="houseEdge" value="1" step="0.1"></div>
+      <div><label for="increaseRate">Increase Rate on Loss (%)</label><input type="number" id="increaseRate" value="10" step="0.1"></div>
+      <div><label for="interval">Spin Interval (ms)</label><input type="number" id="interval" value="1000" step="100"></div>
+      <button id="startBtn">Start Spinner</button>
+      <button id="stopBtn" disabled>Stop Spinner</button>
+    </div>
+
+    <div class="card status">
+      <div><strong>Bet #:</strong> <span id="betNumber">0</span></div>
+      <div><strong>Balance:</strong> $<span id="currentBalance">10.00</span></div>
+      <div><strong>Current Bet:</strong> $<span id="currentBet">0.10</span></div>
+      <div><strong>Last Roll:</strong> <span id="lastRoll">-</span></div>
+      <div><strong>Result:</strong> <span id="resultText">-</span></div>
+      <div class="spin-log" id="spinLog"></div>
+    </div>
+  </div>
+
+  <!-- Simulation Panel -->
+  <div id="simPanel" class="panel">
+    <div class="inputs">
+      <div><label for="simBalance">Initial Balance ($)</label><input type="number" id="simBalance" value="10" step="0.01"></div>
+      <div><label for="simBet">Initial Bet ($)</label><input type="number" id="simBet" value="0.10" step="0.01"></div>
+      <div><label for="simMultiplier">Target Multiplier</label><input type="number" id="simMultiplier" value="10" step="0.1"></div>
+      <div><label for="simEdge">House Edge (%)</label><input type="number" id="simEdge" value="1" step="0.1"></div>
+      <div><label for="simIncrease">Increase Rate on Loss (%)</label><input type="number" id="simIncrease" value="10" step="0.1"></div>
+      <div><label for="spinCount">Spins per Simulation</label><input type="number" id="spinCount" value="100" step="1"></div>
+      <div><label for="simCount">Number of Simulations</label><input type="number" id="simCount" value="1000" step="1"></div>
+      <button id="runSimBtn">Run Simulations</button>
+    </div>
+    <div class="card results" id="simResults">Results will appear here.</div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.getElementById('tabLive').onclick = () => {
+      document.getElementById('livePanel').classList.add('active');
+      document.getElementById('simPanel').classList.remove('active');
+      document.getElementById('tabLive').classList.add('active');
+      document.getElementById('tabSim').classList.remove('active');
+    };
+    document.getElementById('tabSim').onclick = () => {
+      document.getElementById('simPanel').classList.add('active');
+      document.getElementById('livePanel').classList.remove('active');
+      document.getElementById('tabSim').classList.add('active');
+      document.getElementById('tabLive').classList.remove('active');
+    };
+
+    // Live Spinner Logic
+    let balance, bet, winChance, payoutFactor, betCount;
+    const balanceEl = document.getElementById('currentBalance');
+    const betEl = document.getElementById('currentBet');
+    const rollEl = document.getElementById('lastRoll');
+    const resultEl = document.getElementById('resultText');
+    const logEl = document.getElementById('spinLog');
+    const betNumberEl = document.getElementById('betNumber');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    let intervalId;
+
+    function updateDisplay(roll, win) {
+      balanceEl.innerText = balance.toFixed(2);
+      betEl.innerText = bet.toFixed(2);
+      rollEl.innerText = roll.toFixed(4) + ' (' + (win ? 'WIN' : 'LOSS') + ')';
+      resultEl.innerText = win ? 'Win' : 'Loss';
+      betNumberEl.innerText = betCount;
+      logEl.innerText = `#${betCount} | Bet: $${bet.toFixed(2)} | Roll: ${roll.toFixed(4)} | ${win ? '✅ Win' : '❌ Loss'}\n` + logEl.innerText;
+    }
+
+    startBtn.addEventListener('click', () => {
+      balance = parseFloat(document.getElementById('balance').value);
+      const initialBet = parseFloat(document.getElementById('initialBet').value);
+      bet = initialBet;
+      const multiplier = parseFloat(document.getElementById('multiplier').value);
+      const edge = parseFloat(document.getElementById('houseEdge').value) / 100;
+      const inc = parseFloat(document.getElementById('increaseRate').value) / 100;
+      const interval = parseInt(document.getElementById('interval').value, 10);
+      winChance = 1 / multiplier;
+      payoutFactor = multiplier * (1 - edge);
+      betCount = 0;
+      logEl.innerText = '';
+      updateDisplay(0, false);
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      intervalId = setInterval(() => {
+        if (balance < bet) { stopBtn.click(); return; }
+        betCount++;
+        const roll = Math.random();
+        balance -= bet;
+        let win = false;
+        if (roll < winChance) {
+          balance += bet * payoutFactor;
+          win = true;
+        }
+
+        updateDisplay(roll, win);
+        bet = win ? initialBet : bet * (1 + inc);
+      }, interval);
+    });
+    stopBtn.addEventListener('click', () => { clearInterval(intervalId); startBtn.disabled = false; stopBtn.disabled = true; });
+
+ 
+
+
+    // Simulation Logic with withdrawals
+    
+document.getElementById('runSimBtn').addEventListener('click', () => {
+    const startBal = parseFloat(document.getElementById('simBalance').value);
+    const initBet = parseFloat(document.getElementById('simBet').value);
+    const multiplier = parseFloat(document.getElementById('simMultiplier').value);
+    const edge = parseFloat(document.getElementById('simEdge').value) / 100;
+    const inc = parseFloat(document.getElementById('simIncrease').value) / 100;
+    const spinCount = parseInt(document.getElementById('spinCount').value, 10);
+    const simCount = parseInt(document.getElementById('simCount').value, 10);
+
+    const winChance = 1 / multiplier;
+    const payoutFactor = multiplier * (1 - edge);
+
+    let highestBalance = -Infinity;
+    let lowestBalance = Infinity;
+    let highestBet = 0;
+    let totalBets = 0;
+    let busts = 0;
+    let profits = 0;
+    let losses = 0;
+    let totalNetProfit = 0;
+    let totalFinalBal = 0;
+
+    // Calculate bets until bust for loss probability (assuming all losses)
+    let tempBal = startBal;
+    let tempBet = initBet;
+    let betsUntilBust = 0;
+    while (tempBal >= tempBet) {
+        tempBal -= tempBet;
+        betsUntilBust++;
+        tempBet = Math.round(tempBet * (1 + inc) * 100) / 100;
+    }
+    const lossProbability = 1 - winChance;
+    const bustProbability = Math.pow(lossProbability, betsUntilBust);
+
+    for (let i = 0; i < simCount; i++) {
+        let bal = startBal;
+        let bet = initBet;
+        let busted = false;
+
+        for (let j = 0; j < spinCount; j++) {
+            if (bal < bet) {
+                busted = true;
+                break;
+            }
+            totalBets++;
+            if (bet > highestBet) highestBet = bet;
+
+            // Place bet
+            bal -= bet;
+            let net = -bet;
+            if (Math.random() < winChance) {
+                // Win: add payout and reset bet
+                const profit = bet * payoutFactor - bet;
+                bal += bet * payoutFactor;
+                net = profit;
+                bet = initBet;
+            } else {
+                // Loss: increase bet and round to 2 decimal places
+                bet = Math.round(bet * (1 + inc) * 100) / 100;
+            }
+
+            // Track balances
+            if (bal > highestBalance) highestBalance = bal;
+            if (bal < lowestBalance) lowestBalance = bal;
+        }
+
+        if (busted) {
+            busts++;
+        } else {
+            const netTotal = bal - startBal;
+            totalNetProfit += netTotal;
+            if (netTotal > 0) profits++;
+            else if (netTotal < 0) losses++;
+        }
+        totalFinalBal += bal;
+    }
+
+    const avgProfit = totalNetProfit / simCount;
+    const avgFinalBal = totalFinalBal / simCount;
+
+    document.getElementById('simResults').innerText = 
+        `✅ Ran ${simCount} sims of ${spinCount} spins each\n` +
+        `🏆 Highest Balance: $${highestBalance.toFixed(2)}\n` +
+        `📉 Lowest Balance: $${lowestBalance.toFixed(2)}\n` +
+        `🎲 Highest Bet Placed: $${highestBet.toFixed(2)}\n` +
+        `🔢 Total Bets Made: ${totalBets}\n` +
+        `💥 Busts: ${busts} (${(busts/simCount*100).toFixed(2)}%)\n` +
+        `📈 Profitable Sims: ${profits} (${(profits/simCount*100).toFixed(2)}%)\n` +
+        `📉 Losing Sims: ${losses} (${(losses/simCount*100).toFixed(2)}%)\n` +
+        `💲 Avg. Net Profit per Sim: $${avgProfit.toFixed(2)}\n` +
+        `🏦 Avg. Final Balance: $${avgFinalBal.toFixed(2)}\n` +
+        `🎰 Theoretical Bust Probability (losing ${betsUntilBust} bets in a row): ${bustProbability.toFixed(10)}`;
+});
+  </script>
+</body>
+</html>
